@@ -1,5 +1,4 @@
 # trie-cpp
-Low level trie impl using C++
 
 This is an answer to [this post](https://ayende.com/blog/174049/the-low-level-interview-question), in C++.
 
