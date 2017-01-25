@@ -469,7 +469,7 @@ TEST_CASE("can add many urls", "[trie]") {
 	trie t;
 	for (size_t i = 0; i < urls.size(); i++)
 	{
-		auto result = t.write(urls[i], i);
+		auto result = t.write(urls[i], (long)i);
 		VERIFY(result == trie::result::success);
 	}
 
@@ -487,7 +487,7 @@ TEST_CASE("can fill up the trie", "[trie]") {
 	size_t i = 0;
 	while (true)
 	{
-		auto result = t.write(std::to_string(i), i);
+		auto result = t.write(std::to_string(i), (long)i);
 		if (result != trie::result::success)
 			break;
 		i++;

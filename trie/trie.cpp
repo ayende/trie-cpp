@@ -15,7 +15,8 @@ void write_trie_node(char* base, node_header_info* node_header, short offset, co
 	node_header->children_offset = 0;
 	node_header->key_offset = offset + sizeof(node_header_info);
 	node_header->key_size = (short)(key.length() - position_in_key);
-	node_header->value_offset = node_header->key_offset + node_header->key_size;
+    short aligned_key_size = (short)(node_header->key_size + 8 - (node_header->key_size % 8));
+	node_header->value_offset = node_header->key_offset + aligned_key_size;
 
 	auto bound_checked_buffer = stdext::make_checked_array_iterator(
 		base + node_header->key_offset,
@@ -23,7 +24,7 @@ void write_trie_node(char* base, node_header_info* node_header, short offset, co
 
 	std::copy(key.begin() + position_in_key, key.end(), bound_checked_buffer);
 
-	*(long*)(base + node_header->key_offset + node_header->key_size) = val;
+	*(long*)(base + node_header->key_offset + aligned_key_size) = val;
 }
 
 node_header_info* find_child(char* base, char first_char, short* children_offsets, short number_of_children) {
@@ -113,10 +114,10 @@ trie::result append_child_node(char* base, short required_size, trie_header_info
 	auto old_number_of_children =
 		parent->children_offset == 0 ? 0 : (*(base + parent->children_offset));
 
-	required_size +=
+	required_size += (short)(
 		sizeof(char) + // length
 		sizeof(short) + // new child
-		(old_number_of_children * sizeof(short));
+		(old_number_of_children * sizeof(short)));
 
 	trie::result fail;
 	if (has_enough_size(trie_header, required_size, fail) == false)
@@ -133,13 +134,13 @@ trie::result append_child_node(char* base, short required_size, trie_header_info
 	trie_header->next_alloc += required_size;
 	trie_header->used_size += required_size;
 	// record the wasted space for the old children array
-	trie_header->used_size -= sizeof(char) + sizeof(short) * old_number_of_children;
+	trie_header->used_size -= (short)(sizeof(char) + sizeof(short) * old_number_of_children);
 
 
 	auto children_offsets = ((short*)(base + parent->children_offset + sizeof(char)));
-	children_offsets[0] = parent->children_offset
+	children_offsets[0] = (short)(parent->children_offset
 		+ sizeof(char) // length
-		+ sizeof(short) * (old_number_of_children + 1);// offset of 1st child
+		+ sizeof(short) * (old_number_of_children + 1));// offset of 1st child
 
 	auto child = (node_header_info*)(base + children_offsets[0]);
 	write_trie_node(base, child, children_offsets[0], key, position_in_key, val);
@@ -232,8 +233,9 @@ trie::result trie::add_node(trie_header_info* trie_header, node_header_info* sta
 trie::result trie::write(const std::string& key, long val) {
 	if (key.length() > UINT8_MAX)
 		return trie::result::key_too_large;
-
-	short required_size = (short)key.length() + sizeof(val) + sizeof(node_header_info);
+    
+    short aligned_key_size = (short)(key.length() + 8 - (key.length() % 8));
+	short required_size = (short)aligned_key_size + sizeof(val) + sizeof(node_header_info);
 
 	auto trie_header = (trie_header_info*)_buffer;
 
@@ -372,8 +374,8 @@ void trie::defrag() {
 			}
 		}
 
-		trie_header->next_alloc += required_size;
-		trie_header->used_size += required_size;
+		trie_header->next_alloc += (short)required_size;
+		trie_header->used_size += (short)required_size;
 
 	}
 #if DEBUG
